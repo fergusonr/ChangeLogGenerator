@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Drawing;
-
-#if !NET5_0_OR_GREATER
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
-#endif
 
 using System.Diagnostics;
 
@@ -21,7 +18,7 @@ namespace ChangeLogGenerator
 
 		internal class ChangeLog
 		{
-			internal string Name; // branchname
+			internal string Name; // branch name
 			internal Dictionary<Tag, List<string>> Commits = new Dictionary<Tag, List<string>>();
 		}
 		internal struct Tag
@@ -119,7 +116,11 @@ namespace ChangeLogGenerator
 					outStream.WriteLine($"<table>\n<tr><td><b>{tag.Key.Date.ToLongDateString()}</b></td></tr>");
 
 					foreach (var message in tag.Value)
-						outStream.WriteLine($"<tr><td>&nbsp;&#x2022;&nbsp;{message}</td></tr>");
+					{
+						var messageMod = message.Replace("\n", "<br>\n&ensp;&ensp;");
+
+						outStream.WriteLine($"<tr><td>&nbsp;&#x2022;&nbsp;{messageMod}</td></tr>");
+					}
 
 					outStream.WriteLine("</table>\n<br>");
 				}
@@ -146,7 +147,11 @@ namespace ChangeLogGenerator
 					outStream.WriteLine($"#### <span style=\"background-color:rgb({col.R},{col.G},{col.B});color:rgb({fCol.R},{fCol.G},{fCol.B})\">{tag.Key.Name}</span>\n**{tag.Key.Date.ToLongDateString()}**");
 
 					foreach (var message in tag.Value)
-						outStream.WriteLine($"- {message}");
+					{
+						var messageMod = message.Replace("\n", "  \n&ensp;");
+
+						outStream.WriteLine($"- {messageMod}");
+					}
 				}
 
 				outStream.WriteLine();
@@ -177,10 +182,10 @@ namespace ChangeLogGenerator
 
 					foreach (var message in tag.Value)
 					{
-						var messageMod = message.Replace("\\", "\\'5c"); // Escape rtf identifers...
+						var messageMod = message.Replace("\\", "\\'5c"); // Escape rtf identifiers...
 						messageMod = messageMod.Replace("{", "\\'7b"); 
 						messageMod = messageMod.Replace("}", "\\'7d");
-						messageMod = messageMod.Count(x => x == '\n') > 1 ? messageMod.Replace("\n", "\\line\n") : messageMod;
+						messageMod = messageMod.Count(x => x == '\n') > 1 ? messageMod.Replace("\n", "\\line\\tab\n") : messageMod;
 
 						outStream.WriteLine($@"\bullet  {messageMod}\line");
 					}
@@ -223,7 +228,12 @@ namespace ChangeLogGenerator
 					outStream.WriteLine();
 
 					foreach (var message in tag.Value)
-						outStream.WriteLine($"  {message}");
+					{
+						var messageMod = message.Replace("\n", "\n\t");
+
+						outStream.WriteLine($"  {messageMod}");
+					}
+
 					outStream.WriteLine();
 				}
 

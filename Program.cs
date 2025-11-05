@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Reflection;
-
-#if !NET5_0_OR_GREATER
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
-#endif
+using System.Reflection;
 
 namespace ChangeLogGenerator
 {
