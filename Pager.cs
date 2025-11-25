@@ -1,32 +1,28 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Linq;
 
 namespace Helpers.Pagers
 {
 	/// <summary>
-	/// Text Pager (More)
+	/// Unix style "more" Text Pager
 	/// </summary>
 	public class Pager : TextWriter
 	{
-		public Pager()
-		{
-			Encoding = Console.Out.Encoding;
-		}
-
-		public required int Length
+		/// <summary>
+		/// Total incoming line count. Set to zero if unknown
+		/// </summary>
+		public required int LineCount
 		{
 			get;
 			set
 			{
-				field = value;
+				field = value <= 0 ? int.MaxValue : value;
 				_total = 0;
-				_window = 0;
+				_window = 1;
 			}
 		}
-
-		int _total;
-		int _window;
 
 		public override Encoding Encoding { get; }
 
@@ -44,42 +40,82 @@ namespace Helpers.Pagers
 		}
 
 		#region Private
+		int _total;
+		int _window;
+		string _lostline;
+
 		private void Print(string line, bool crlf)
 		{
-			if (_total == Length)
+			if (_total == LineCount)
 				return;
 
-			if (_total < Length && _window < Console.WindowHeight)
+			if (_total < LineCount && _window < Console.WindowHeight)
 			{
 				if (crlf)
 				{
 					if (string.IsNullOrEmpty(line))
 						Console.WriteLine();
 					else
-						Console.WriteLine(line);
+					{
+						if (_lostline != null)
+						{
+							Console.WriteLine(_lostline);
+							_lostline = null;
+							_window++;
+						}
 
-					_total++;
+						Console.WriteLine(line);
+						_window += line.Count(x => x == '\n');
+					}
+
 					_window++;
+					_total++;
 				}
 				else
 					Console.Write(line);
 			}
 			else
 			{
-				_window = 0;
+				_window = 1;
 
 				if (Console.IsOutputRedirected)
 					return;
 
 				Console.ResetColor();
-				Console.Write($"-- More ({Math.Round((double)_total / Length * 100)}%) -- ");
 
-				var key = Console.ReadKey(intercept: true);
-				if(key.KeyChar == 'q' || key.KeyChar == 'Q')
-				{
-					_total = Length;
-					return;
+				if(LineCount == int.MaxValue)
+					Console.Write("-- More -- ");
+				else
+					Console.Write($"-- More ({Math.Round((double)_total / LineCount * 100)}%) -- ");
+
+				while(true)
+				{ 
+					var key = Console.ReadKey(intercept: true);
+					if(key.Key == ConsoleKey.Q)
+					{
+						Console.WriteLine();
+						_total = LineCount;
+						return;
+					}
+
+					_lostline = line; // Because of "-- More (29%) --" being written
+
+					if (key.Key == ConsoleKey.Spacebar) // increment page
+					{
+						break;
+					}
+
+					if(key.Key == ConsoleKey.Enter) // increment (bug 2!) lines
+					{
+						_window = Console.WindowHeight - 1;
+						_total++;
+						break;
+					}
 				}
+
+				Console.CursorLeft = 0;
+				Console.Write(new string(' ', 20));
+				Console.CursorLeft = 0;
 			}
 		}
 		#endregion

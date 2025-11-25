@@ -42,14 +42,12 @@ namespace ChangeLogGenerator
 			_repo = new Repository(repoPath);
 
 			if (namedBranch == null)
-				_branch = _repo.Branches.First(); // master/main
+				_branch = _repo.Branches.FirstOrDefault(x => x.IsCurrentRepositoryHead); // master/main
 			else
-			{
 				_branch = _repo.Branches.FirstOrDefault(x => x.FriendlyName == namedBranch);
 
-				if (_branch == null)
-					throw new Exception($"Branch {namedBranch} not found");
-			}
+			if (_branch == null)
+				throw new Exception($"Branch {namedBranch} not found");
 
 			_changeLog.Name = _branch.FriendlyName;
 
@@ -208,50 +206,53 @@ namespace ChangeLogGenerator
 			/// Text
 			///
 			else
-			{
-				var lineCount = 
-					_changeLog.Commits.Count * 3 // tag + date + spacer
-				  + _changeLog.Commits.Sum(x => x.Value.Count)
-				  + _changeLog.Commits.Sum(x => x.Value.FindAll(n => n.Contains('\n')).Count)
-				  + (NoCredit ? 2 : 4);
-					 
-				var pager = new Pager() { Length = lineCount };
+			{					 
+				if(outStream == Console.Out)
+				{
+					var lineCount =
+						_changeLog.Commits.Count * 3 // tag + date + spacer
+					  + _changeLog.Commits.Sum(x => x.Value.Count)
+					  + _changeLog.Commits.Sum(x => x.Value.FindAll(n => n.Contains('\n')).Count)
+					  + (NoCredit ? 2 : 4);
+
+					outStream = new Pager() { LineCount = lineCount };
+				}
 
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
 				{			
 					Console.BackgroundColor = tag.Key.Name == _untagged ? ConsoleColor.DarkYellow : ConsoleColor.DarkGreen;
 					Console.ForegroundColor = ConsoleColor.White;
 
-					pager.Write($" {tag.Key.Name} ");
+					outStream.Write($" {tag.Key.Name} ");
 
 					// https://stackoverflow.com/questions/31140768/console-resetcolor-is-not-resetting-the-line-after-completely
 					Console.ResetColor();
-					pager.WriteLine();
+					outStream.WriteLine();
 
 					Console.BackgroundColor = ConsoleColor.DarkGray;
 					Console.ForegroundColor = ConsoleColor.White;
 
-					pager.Write($" {tag.Key.Date.ToLongDateString()} ");
+					outStream.Write($" {tag.Key.Date.ToLongDateString()} ");
 
 					Console.ResetColor();
-					pager.WriteLine();
+					outStream.WriteLine();
 
 					foreach (var message in tag.Value)
 					{
 						var messageMod = message.Replace("\n", "\n\t");
 
-						pager.WriteLine($"  {messageMod}");
+						outStream.WriteLine($"  {messageMod}");
 					}
 
-					pager.WriteLine();
+					outStream.WriteLine();
 				}
 
-				pager.WriteLine($"Branch: {_changeLog.Name}");
+				outStream.WriteLine($"Branch: {_changeLog.Name}");
 
 				if (!NoCredit)
 				{
-					pager.WriteLine();
-					pager.WriteLine($"{text}: {gitUrl}");
+					outStream.WriteLine();
+					outStream.WriteLine($"{text}: {gitUrl}");
 				}
 			}
 			#endregion

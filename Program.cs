@@ -96,20 +96,20 @@ namespace ChangeLogGenerator
 
 	internal static class ArgsExtensions
 	{
-		private static readonly Dictionary<string, (bool Manditory, bool HasValue)> _known = new Dictionary<string, (bool, bool)>();
+		private static readonly Dictionary<string, (bool Mandatory, bool HasValue)> _known = new Dictionary<string, (bool, bool)>();
 
 		// for	"-searchKey value"	return "value"
-		internal static string Arg(this string[] args, string name, bool manditory = false)
+		internal static string Arg(this string[] args, string name, bool mandatory = false)
 		{
-			_known.Add($"--{name}", (manditory, true));
+			_known.Add($"--{name}", (mandatory, true));
 			var index = Array.IndexOf(args, $"--{name}");
 			return index != -1 && index + 1 < args.Length ? args[index + 1] : null;
 		}
 
 		// Simple boolean arg		"-someoption"	return true
-		internal static bool ArgBool(this string[] args, string name, bool manditory = false)
+		internal static bool ArgBool(this string[] args, string name, bool mandatory = false)
 		{
-			_known.Add($"--{name}", (manditory, false));
+			_known.Add($"--{name}", (mandatory, false));
 			return args.Contains($"--{name}");
 		}
 
@@ -128,7 +128,7 @@ namespace ChangeLogGenerator
 				return false;
 			}
 
-			var missing = _known.Where(x => x.Value.Manditory).Select(x => x.Key).Except(args);
+			var missing = _known.Where(x => x.Value.Mandatory).Select(x => x.Key).Except(args);
 
 			if (missing.Any())
 			{
