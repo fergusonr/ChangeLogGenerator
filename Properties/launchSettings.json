@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ChangeLogGenerator": {
+      "commandName": "Project",
+      "commandLineArgs": "--text --repo C:\\Users\\ross\\Windows\\Apps\\DepartureBoard"
+    }
+  }
+}
