@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 
 using LibGit2Sharp;
+using Helpers.Pagers;
 
 namespace ChangeLogGenerator
 {
@@ -208,41 +209,49 @@ namespace ChangeLogGenerator
 			///
 			else
 			{
+				var lineCount = 
+					_changeLog.Commits.Count * 3 // tag + date + spacer
+				  + _changeLog.Commits.Sum(x => x.Value.Count)
+				  + _changeLog.Commits.Sum(x => x.Value.FindAll(n => n.Contains('\n')).Count)
+				  + (NoCredit ? 2 : 4);
+					 
+				var pager = new Pager() { Length = lineCount };
+
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
-				{
+				{			
 					Console.BackgroundColor = tag.Key.Name == _untagged ? ConsoleColor.DarkYellow : ConsoleColor.DarkGreen;
 					Console.ForegroundColor = ConsoleColor.White;
 
-					outStream.Write($" {tag.Key.Name} ");
+					pager.Write($" {tag.Key.Name} ");
 
 					// https://stackoverflow.com/questions/31140768/console-resetcolor-is-not-resetting-the-line-after-completely
 					Console.ResetColor();
-					outStream.WriteLine();
+					pager.WriteLine();
 
 					Console.BackgroundColor = ConsoleColor.DarkGray;
 					Console.ForegroundColor = ConsoleColor.White;
 
-					outStream.Write($" {tag.Key.Date.ToLongDateString()} ");
+					pager.Write($" {tag.Key.Date.ToLongDateString()} ");
 
 					Console.ResetColor();
-					outStream.WriteLine();
+					pager.WriteLine();
 
 					foreach (var message in tag.Value)
 					{
 						var messageMod = message.Replace("\n", "\n\t");
 
-						outStream.WriteLine($"  {messageMod}");
+						pager.WriteLine($"  {messageMod}");
 					}
 
-					outStream.WriteLine();
+					pager.WriteLine();
 				}
 
-				outStream.WriteLine($"Branch: {_changeLog.Name}");
+				pager.WriteLine($"Branch: {_changeLog.Name}");
 
 				if (!NoCredit)
 				{
-					outStream.WriteLine();
-					outStream.WriteLine($"{text}: {gitUrl}");
+					pager.WriteLine();
+					pager.WriteLine($"{text}: {gitUrl}");
 				}
 			}
 			#endregion
