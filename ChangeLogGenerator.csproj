@@ -7,8 +7,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <BaseIntermediateOutputPath>obj</BaseIntermediateOutputPath>
-    <AssemblyVersion>1.2.4</AssemblyVersion>
-    <FileVersion>1.2.4</FileVersion>
+    <AssemblyVersion>1.2.5</AssemblyVersion>
+    <FileVersion>1.2.5</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
