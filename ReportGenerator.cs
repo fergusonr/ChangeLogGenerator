@@ -57,13 +57,20 @@ namespace ChangeLogGenerator
 			timer.Start();
 
 			var currentTag = new Tag();
+
+			var tags = new Dictionary<string, string>();
+
+			foreach (var tag in _repo.Tags)
+			{
+				if (!tags.ContainsKey(tag.Reference.TargetIdentifier))
+					tags.Add(tag.Reference.TargetIdentifier, tag.FriendlyName);
+			}
+
 			foreach (var commit in _branch.Commits.OrderByDescending(x => x.Author.When))
 			{
-				var tag = _repo.Tags.FirstOrDefault(x => commit.Sha == x.Reference.TargetIdentifier);
-
-				if (tag != null)
+				if (tags.ContainsKey(commit.Sha))
 				{
-					currentTag.Name = tag.FriendlyName;
+					currentTag.Name = tags[commit.Sha];
 					currentTag.Date = commit.Author.When.Date;
 				}
 
