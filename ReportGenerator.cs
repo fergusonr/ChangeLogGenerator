@@ -13,7 +13,7 @@ namespace ChangeLogGenerator
 {
 	public class ReportGenerator
 	{
-		public enum OutputType { None, Txt, Rtf, Html, Md };
+		public enum OutputType { Txt, Rtf, Html, Md };
 
 		public bool NoCredit { get; set; }
 

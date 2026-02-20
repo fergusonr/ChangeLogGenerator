@@ -1,8 +1,6 @@
 ﻿using System;
+using System.CommandLine;
 using System.IO;
-using System.Linq;
-using System.Collections.Generic;
-using System.Reflection;
 
 namespace ChangeLogGenerator
 {
@@ -11,57 +9,27 @@ namespace ChangeLogGenerator
 		static void Main(string[] args)
 		{
 			#region commandline args
-			var type = ReportGenerator.OutputType.None;
+			var oRepoPath = new Option<string>("--repo") { Description = "Repo path", DefaultValueFactory = r => "." };
+			oRepoPath.AcceptLegalFilePathsOnly();
+			var oBranch = new Option<string>("--branch") { Description = "Branch name" };
+			var oType = new Option<ReportGenerator.OutputType>("--type") { Description = "Output format", Required = true };
+			var oNoCredit = new Option<bool>("--nocredit") { Description = "No credit" };
+			var oOutput = new Option<string>("--output") { Description = "Output file" };
+			oOutput.AcceptLegalFilePathsOnly();
 
-			if (args.ArgBool("html"))
-				type = ReportGenerator.OutputType.Html;
-			if (args.ArgBool("rtf"))
-				type = ReportGenerator.OutputType.Rtf;
-			if (args.ArgBool("md"))
-				type = ReportGenerator.OutputType.Md;
-			if (args.ArgBool("txt") || args.ArgBool("text"))
-				type = ReportGenerator.OutputType.Txt;
+			var rootCommand = new RootCommand(nameof(ChangeLogGenerator)) { oRepoPath, oBranch, oType, oNoCredit, oOutput };
+			rootCommand.TreatUnmatchedTokensAsErrors = true;
+		
+			var results = rootCommand.Parse(args);
+			results.Invoke();
 
-			var repoPath = args.Arg("repo") ?? ".";
-			var branch = args.Arg("branch");
-			var noCredit = args.ArgBool("nocredit");
-			var showVersion = args.ArgBool("version");
-
-			var outFile = args.Arg("output");
-
-			if(args.Length == 0)
-			{
-				ShowUsage();
+			if ((results.Action?.Terminating) ?? false)
 				return;
-			}
 
-			// validate
-			if (!args.Check(out string message))
-			{
-				Console.Error.WriteLine($"Error: {message}");
-				ShowUsage();
-				return;
-			}
+			var outFile = results.GetValue(oOutput);
+			var type = results.GetValue(oType);
 
-			void ShowUsage()
-			{
-				Console.Error.WriteLine($"Usage: {typeof(Program).Namespace} --txt | --rtf | --md | --html [--nocredit] [--repo path] [--branch name] [--output filename]");
-			}
-
-			if (showVersion)
-			{
-				var name = Assembly.GetExecutingAssembly().GetName();
-				Console.Error.WriteLine($"{name.Name} {name.Version.Major}.{name.Version.Build}.{name.Version.Minor}.{name.Version.MinorRevision}");
-				return;
-			}
-
-			if (type == ReportGenerator.OutputType.None)
-			{
-				Console.Error.WriteLine("Error: Specify file format --txt | --rtf | --md | --html");
-				return;
-			}
-
-			if(outFile != null)
+			if (outFile != null)
 			{
 				var ext = Path.GetExtension(outFile);
 
@@ -80,7 +48,7 @@ namespace ChangeLogGenerator
 
 			try
 			{
-				var parser = new ReportGenerator(repoPath, branch) { NoCredit = noCredit };
+				var parser = new ReportGenerator(results.GetValue(oRepoPath), results.GetValue(oBranch)) { NoCredit = results.GetValue(oNoCredit) };
 
 				using (TextWriter outStream = outFile == null ?  Console.Out : new StreamWriter(outFile))
 				{
@@ -91,53 +59,6 @@ namespace ChangeLogGenerator
 			{
 				Console.Error.WriteLine($"Error: {e.Message}");
 			}
-		}
-	}
-
-	internal static class ArgsExtensions
-	{
-		private static readonly Dictionary<string, (bool Mandatory, bool HasValue)> _known = new Dictionary<string, (bool, bool)>();
-
-		// for	"-searchKey value"	return "value"
-		internal static string Arg(this string[] args, string name, bool mandatory = false)
-		{
-			_known.Add($"--{name}", (mandatory, true));
-			var index = Array.IndexOf(args, $"--{name}");
-			return index != -1 && index + 1 < args.Length ? args[index + 1] : null;
-		}
-
-		// Simple boolean arg		"-someoption"	return true
-		internal static bool ArgBool(this string[] args, string name, bool mandatory = false)
-		{
-			_known.Add($"--{name}", (mandatory, false));
-			return args.Contains($"--{name}");
-		}
-
-		/// <summary>
-		/// Check
-		/// </summary>
-		/// <param name="args"></param>
-		/// <returns></returns>
-		public static bool Check(this string[] args, out string message)
-		{
-			var unknown = args.Where(x => x.StartsWith("-")).Except(_known.Keys);
-
-			if (unknown.Any())
-			{
-				message = $"Unknown argument(s): {string.Join(", ", unknown)}";
-				return false;
-			}
-
-			var missing = _known.Where(x => x.Value.Mandatory).Select(x => x.Key).Except(args);
-
-			if (missing.Any())
-			{
-				message = $"Missing argument(s): {string.Join(", ", missing)}";
-				return false;
-			}
-
-			message = "";
-			return true;
 		}
 	}
 }
