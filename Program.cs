@@ -36,9 +36,9 @@ namespace ChangeLogGenerator
 				if (ext == string.Empty)
 				{
 					outFile += "." + type.ToString().ToLower();
-					Console.Error.WriteLine($"Outfile: {outFile}");
+					Console.Error.WriteLine($"Output file: {outFile}");
 				}
-				else if(!ext.Substring(1).Equals(type.ToString(), StringComparison.InvariantCultureIgnoreCase))
+				else if(!ext[1..].Equals(type.ToString(), StringComparison.InvariantCultureIgnoreCase))
 				{
 					Console.Error.WriteLine($"Invalid extension {ext}");
 					return;
@@ -50,7 +50,7 @@ namespace ChangeLogGenerator
 			{
 				var parser = new ReportGenerator(results.GetValue(oRepoPath), results.GetValue(oBranch)) { NoCredit = results.GetValue(oNoCredit) };
 
-				using (TextWriter outStream = outFile == null ?  Console.Out : new StreamWriter(outFile))
+				using (TextWriter outStream = outFile == null ? Console.Out : new StreamWriter(outFile))
 				{
 					parser.Generate(type, outStream);
 				}

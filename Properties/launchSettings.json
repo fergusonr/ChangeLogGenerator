@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ChangeLogGenerator": {
+      "commandName": "Project",
+      "commandLineArgs": "--type txt --repo ..\\..\\.."
+    }
+  }
+}

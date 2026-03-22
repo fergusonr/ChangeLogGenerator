@@ -1,13 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 
-using System.Diagnostics;
+using Helpers.Pagers;
 
 using LibGit2Sharp;
-using Helpers.Pagers;
+
 
 namespace ChangeLogGenerator
 {
@@ -20,18 +21,25 @@ namespace ChangeLogGenerator
 		internal class ChangeLog
 		{
 			internal string Name; // branch name
-			internal Dictionary<Tag, List<string>> Commits = new Dictionary<Tag, List<string>>();
+			internal Dictionary<Tag, List<string>> Commits = new();
 		}
+
 		internal struct Tag
 		{
-			internal string Name;
+			internal List<string> Names = new();
 			internal DateTime Date;
+
+			public Tag(){}
+
+			public override string ToString() => $"{Names.FirstOrDefault()} {Date:D}";
+
+			public override int GetHashCode() => Names.FirstOrDefault().GetHashCode();
 		}
 
 		private readonly Repository _repo;
 		private readonly Branch _branch;
 
-		private readonly ChangeLog _changeLog = new ChangeLog();
+		private readonly ChangeLog _changeLog = new();
 		private const string _untagged = "Untagged";
 
 		/// <summary>
@@ -58,26 +66,31 @@ namespace ChangeLogGenerator
 
 			var currentTag = new Tag();
 
-			var tags = new Dictionary<string, string>();
+
+			// cache tags
+			var tags = new Dictionary<string, List<string>>();
 
 			foreach (var tag in _repo.Tags)
 			{
 				if (!tags.ContainsKey(tag.Reference.TargetIdentifier))
-					tags.Add(tag.Reference.TargetIdentifier, tag.FriendlyName);
+					tags[tag.Reference.TargetIdentifier] = new();
+
+				tags[tag.Reference.TargetIdentifier].Add(tag.FriendlyName);
 			}
 
+			// gather and collate all git data
 			foreach (var commit in _branch.Commits.OrderByDescending(x => x.Author.When))
 			{
-				if (tags.ContainsKey(commit.Sha))
+				if (tags.TryGetValue(commit.Sha, out List<string> value))
 				{
-					currentTag.Name = tags[commit.Sha];
+					currentTag.Names = value;
 					currentTag.Date = commit.Author.When.Date;
 				}
 
 				if (currentTag.Date == DateTime.MinValue)
 				{
-						currentTag.Name = _untagged;
-						currentTag.Date = commit.Author.When.Date;
+					currentTag.Names.Add(_untagged);
+					currentTag.Date = commit.Author.When.Date;
 				}
 
 				if (!_changeLog.Commits.ContainsKey(currentTag))
@@ -116,10 +129,12 @@ namespace ChangeLogGenerator
 
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
 				{
-					var col = tag.Key.Name == _untagged ? bColU : bCol;
+					var col = tag.Key.Names.First() == _untagged ? bColU : bCol;
 
-					outStream.WriteLine($"<b style=\"background-color:rgb({col.R},{col.G},{col.B});color:rgb({fCol.R},{fCol.G},{fCol.B})\">&nbsp;{tag.Key.Name}&nbsp;</b>");
-					outStream.WriteLine($"<table>\n<tr><td><b>{tag.Key.Date.ToLongDateString()}</b></td></tr>");
+					foreach(var name in tag.Key.Names)
+						outStream.WriteLine($"<b style=\"background-color:rgb({col.R},{col.G},{col.B});color:rgb({fCol.R},{fCol.G},{fCol.B})\">&nbsp;{name}&nbsp;</b>");
+	
+					outStream.WriteLine($"<table>\n<tr><td><b>{tag.Key.Date:D}</b></td></tr>");
 
 					foreach (var message in tag.Value)
 					{
@@ -148,9 +163,12 @@ namespace ChangeLogGenerator
 			{
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
 				{
-					var col = tag.Key.Name == _untagged ? bColU : bCol;
+					var col = tag.Key.Names.First() == _untagged ? bColU : bCol;
 
-					outStream.WriteLine($"#### <span style=\"background-color:rgb({col.R},{col.G},{col.B});color:rgb({fCol.R},{fCol.G},{fCol.B})\">{tag.Key.Name}</span>\n**{tag.Key.Date.ToLongDateString()}**");
+					foreach(var name in tag.Key.Names)
+						outStream.WriteLine($"#### <span style=\"background-color:rgb({col.R},{col.G},{col.B});color:rgb({fCol.R},{fCol.G},{fCol.B})\">{name}</span>");
+
+					outStream.WriteLine($"\n**{tag.Key.Date:D}**");
 
 					foreach (var message in tag.Value)
 					{
@@ -180,12 +198,14 @@ namespace ChangeLogGenerator
 
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
 				{
-					var col = tag.Key.Name == _untagged ? 3 : 2;
+					var col = tag.Key.Names.First() == _untagged ? 3 : 2;
 
-					outStream.WriteLine($@"{{\pard\li0\highlight1\cf1\highlight{col}\b1  {tag.Key.Name} }}\line\b1 {tag.Key.Date.ToLongDateString()}\b0\par");
+					foreach(var name in tag.Key.Names)
+						outStream.WriteLine($@"{{\pard\li0\highlight1\cf1\highlight{col}\b1  {name} }}");
+
+					outStream.WriteLine($@"\line\b1 {tag.Key.Date:D}\b0\par");
 
 					outStream.WriteLine(@"{\pard\li400");
-
 					foreach (var message in tag.Value)
 					{
 						var messageMod = message.Replace("\\", "\\'5c"); // Escape rtf identifiers...
@@ -227,10 +247,11 @@ namespace ChangeLogGenerator
 
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
 				{			
-					Console.BackgroundColor = tag.Key.Name == _untagged ? ConsoleColor.DarkYellow : ConsoleColor.DarkGreen;
+					Console.BackgroundColor = tag.Key.Names.First() == _untagged ? ConsoleColor.DarkYellow : ConsoleColor.DarkGreen;
 					Console.ForegroundColor = ConsoleColor.White;
 
-					outStream.Write($" {tag.Key.Name} ");
+					foreach(var name in tag.Key.Names)
+						outStream.Write($" {name} ");
 
 					// https://stackoverflow.com/questions/31140768/console-resetcolor-is-not-resetting-the-line-after-completely
 					Console.ResetColor();
@@ -239,7 +260,7 @@ namespace ChangeLogGenerator
 					Console.BackgroundColor = ConsoleColor.DarkGray;
 					Console.ForegroundColor = ConsoleColor.White;
 
-					outStream.Write($" {tag.Key.Date.ToLongDateString()} ");
+					outStream.Write($" {tag.Key.Date:D} ");
 
 					Console.ResetColor();
 					outStream.WriteLine();
