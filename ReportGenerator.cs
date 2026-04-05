@@ -125,20 +125,34 @@ namespace ChangeLogGenerator
 			///
 			if (outputType == OutputType.Html)
 			{
-				outStream.WriteLine("<html>\n<body>");
+				outStream.WriteLine(@"
+<html>
+<head>
+<style>
+body {font-family: ""Arial""}
+label1 {background-color:DarkGreen;color:white;}
+label2 {background-color:Orange;color:white;}
+</style>
+</head>    
+<body>
+");
 
 				foreach (var tag in _changeLog.Commits.OrderByDescending(x => x.Key.Date))
 				{
-					var col = tag.Key.Names.First() == _untagged ? bColU : bCol;
+					var col = tag.Key.Names.First() == _untagged ? 2 : 1;
 
 					foreach(var name in tag.Key.Names)
-						outStream.WriteLine($"<b style=\"background-color:rgb({col.R},{col.G},{col.B});color:rgb({fCol.R},{fCol.G},{fCol.B})\">&nbsp;{name}&nbsp;</b>");
+						outStream.WriteLine($"<label{col}>&nbsp;{name}&nbsp;</label{col}>");
 	
 					outStream.WriteLine($"<table>\n<tr><td><b>{tag.Key.Date:D}</b></td></tr>");
 
 					foreach (var message in tag.Value)
 					{
-						var messageMod = message.Replace("\n", "<br>\n&ensp;&ensp;");
+						var messageMod = message.Replace("\"", "&quot;"); // order is important
+						messageMod = messageMod.Replace("'", "&apos;");
+						messageMod = messageMod.Replace("<", "&lt;");
+						messageMod = messageMod.Replace(">", "&gt;");
+						messageMod = messageMod.Replace("\n", "<br>\n&ensp;&ensp;");
 
 						outStream.WriteLine($"<tr><td>&nbsp;&#x2022;&nbsp;{messageMod}</td></tr>");
 					}
